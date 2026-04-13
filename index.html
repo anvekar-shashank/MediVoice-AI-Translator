@@ -1,4 +1,78 @@
-<div class="card settings-card">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediTranslate AI - Gemini System</title>
+    
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <nav class="sidebar">
+        <div class="sidebar-top">
+            <div class="logo">
+                <ion-icon name="pulse"></ion-icon>
+                <span>MediTranslate</span>
+            </div>
+            <ul class="nav-links">
+                <li class="active"><ion-icon name="grid"></ion-icon> Dashboard</li>
+            </ul>
+        </div>
+        <div class="sidebar-bottom">
+            <div class="trust-badge">
+                <ion-icon name="shield-checkmark"></ion-icon>
+                <p>Secure & Private<br>AI Processing</p>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <header>
+            <div class="title-group">
+                <h1>Multilingual MediTranslate AI</h1>
+                <p>Advanced Medical Document Analysis & Live Voice Translation</p>
+            </div>
+            <div class="user-profile">
+                <ion-icon name="person-circle"></ion-icon>
+            </div>
+        </header>
+
+        <div class="dashboard-grid">
+            
+            <div class="card upload-card">
+                <div class="card-header">
+                    <ion-icon name="cloud-upload"></ion-icon>
+                    <h3>Upload Medical Report</h3>
+                </div>
+                <div class="dropzone" id="reportDropzone">
+                    <div id="dropzoneContent">
+                        <ion-icon name="document-attach-outline"></ion-icon>
+                        <p id="fileNameDisplay">Click to browse or drag & drop</p>
+                        <span class="supported">Supported formats: JPG, PNG, PDF</span>
+                    </div>
+                    <input type="file" id="reportUpload" accept="image/*, application/pdf" style="display: none;">
+                </div>
+            </div>
+
+            <div class="card voice-card">
+                <div class="card-header">
+                    <ion-icon name="mic-circle"></ion-icon>
+                    <h3>Live Voice Consultation</h3>
+                </div>
+                <div class="voice-controls">
+                    <button id="recordBtn" class="btn-outline">
+                        <ion-icon name="mic-outline"></ion-icon> <span id="recordText">Start Recording Doctor</span>
+                    </button>
+                    <div id="liveTranscript" class="transcript-box">
+                        <p class="placeholder-text-small">Doctor's live speech will appear here...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card settings-card">
                 <div class="card-header">
                     <ion-icon name="options"></ion-icon>
                     <h3>System Settings</h3>
@@ -34,3 +108,27 @@
                     <ion-icon name="sparkles"></ion-icon> Analyze & Translate
                 </button>
             </div>
+
+            <div class="card result-card">
+                <div class="card-header result-header">
+                    <div class="header-left">
+                        <ion-icon name="reader"></ion-icon>
+                        <h3>Translation & Summary</h3>
+                    </div>
+                    <button id="speakBtn" class="btn-secondary" disabled>
+                        <ion-icon name="volume-high"></ion-icon> Speak Summary
+                    </button>
+                </div>
+                <div id="translatedOutput" class="result-display">
+                    <div class="placeholder-text">
+                        <ion-icon name="document-text-outline"></ion-icon>
+                        <p>Provide inputs and click "Analyze & Translate" to view results here.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div> <div id="statusMessage" class="status-box">System Ready. Awaiting input.</div>
+    </main> <script src="script.js"></script>
+</body>
+</html>
+</html>

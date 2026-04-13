@@ -1,356 +1,255 @@
-/* ============================================
-   MediTranslate AI - Stylesheet
-   ============================================
-   Description: Modern, responsive styling for medical document translation interface
-   Design System: Clean, professional healthcare-focused UI
-   Framework: Pure CSS with custom properties
-   ============================================ */
+/**
+ * ============================================
+ * MediTranslate AI - JavaScript Application
+ * ============================================
+ * Description: Advanced medical document analysis and live voice translation system
+ * Technologies: Google Gemini 3.1 Flash API, Web Speech API, Google Translate TTS
+ * Author: MediTranslate Team
+ * ============================================
+ */
 
-/* CSS Custom Properties (CSS Variables) - Design System Colors */
-:root {
-    --bg-color: #f0f4f8;          /* Main background color */
-    --sidebar-bg: #111827;        /* Dark sidebar background */
-    --card-bg: #ffffff;           /* White card backgrounds */
-    --primary-blue: #2563eb;      /* Primary action color */
-    --primary-hover: #1d4ed8;     /* Primary button hover state */
-    --accent-teal: #0d9488;       /* Secondary accent color */
-    --accent-teal-hover: #0f766e; /* Secondary accent hover */
-    --text-main: #1f2937;         /* Primary text color */
-    --text-muted: #6b7280;        /* Secondary/muted text */
-    --border-light: #e5e7eb;      /* Light border colors */
+// --- 1. DOM ELEMENT SELECTORS ---
+const reportUpload = document.getElementById('reportUpload');      
+const dropzone = document.getElementById('reportDropzone');          
+const fileNameDisplay = document.getElementById('fileNameDisplay');    
+const languageSelect = document.getElementById('languageSelect');     
+const translateBtn = document.getElementById('translateBtn');          
+const speakBtn = document.getElementById('speakBtn');                  
+const statusMessage = document.getElementById('statusMessage');        
+const translatedOutput = document.getElementById('translatedOutput');  
+const apiKeyInput = document.getElementById('apiKeyInput');
+
+// --- 2. GLOBAL STATE VARIABLES ---
+let audioScript = "";      // Stores the short summary for text-to-speech
+let currentAudio = null;   // Audio object reference for playback control
+
+// --- 3. FILE UPLOAD & DRAG-AND-DROP FUNCTIONALITY ---
+dropzone.addEventListener('click', () => reportUpload.click());
+
+reportUpload.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+        handleFileStatus(e.target.files[0]);
+    }
+});
+
+['dragover', 'dragleave', 'drop'].forEach(eventName => {
+    dropzone.addEventListener(eventName, (e) => {
+        e.preventDefault();    
+        e.stopPropagation();   
+    });
+});
+
+dropzone.addEventListener('dragover', () => {
+    dropzone.style.borderColor = '#2563eb';
+    dropzone.style.backgroundColor = '#f0f7ff';
+});
+
+dropzone.addEventListener('dragleave', () => {
+    dropzone.style.borderColor = '#cbd5e1';
+    dropzone.style.backgroundColor = '#fbfcfe';
+});
+
+dropzone.addEventListener('drop', (e) => {
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+        reportUpload.files = files;  
+        handleFileStatus(files[0]);
+    }
+});
+
+function handleFileStatus(file) {
+    fileNameDisplay.innerHTML = ` File: ${file.name}`;
+    dropzone.classList.add('file-set');
+    dropzone.style.borderColor = '#10b981';
+    statusMessage.innerHTML = "📎 File attached. Ready for analysis.";
 }
 
-/* Base Body Styles - Typography and Layout */
-body { 
-    font-family: 'Inter', sans-serif; /* Modern, clean font stack */
-    background: var(--bg-color);      
-    margin: 0; 
-    display: flex;                    /* Flexbox layout for sidebar + main */
-    height: 100vh;                    /* Full viewport height */
-    overflow: hidden;                 /* Prevent scrollbars */
-    color: var(--text-main);
+async function fileToB64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);  
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);  
+    });
 }
 
-/* ============================================
-   SIDEBAR NAVIGATION STYLES
-   ============================================ */
-.sidebar { 
-    width: 260px; 
-    background: var(--sidebar-bg); 
-    color: white; 
-    padding: 30px 20px; 
-    display: flex; 
-    flex-direction: column; 
-    justify-content: space-between; /* Pushes trust badge to bottom */
+// --- 4. VOICE RECOGNITION (Web Speech API) ---
+const recordBtn = document.getElementById('recordBtn');
+const recordText = document.getElementById('recordText');
+const liveTranscript = document.getElementById('liveTranscript');
+
+let isRecording = false;
+let finalTranscript = "";
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition;
+
+if (SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.continuous = true;      
+    recognition.interimResults = true;  
+    recognition.lang = 'en-US';         
+
+    recognition.onstart = () => {
+        isRecording = true;
+        recordBtn.classList.add('recording');
+        recordText.innerText = "Listening... Click to Stop";
+        statusMessage.innerHTML = "🎤 Recording doctor's consultation...";
+    };
+
+    recognition.onresult = (event) => {
+        let interimTranscript = "";
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalTranscript += transcript + " ";
+            } else {
+                interimTranscript += transcript;
+            }
+        }
+        liveTranscript.innerHTML = `<strong>Transcript:</strong> ${finalTranscript} <br> <i style="color:#94a3b8">${interimTranscript}</i>`;
+    };
+
+    recognition.onend = () => {
+        if (isRecording) recognition.start(); 
+    };
+} else {
+    recordBtn.disabled = true;
+    recordText.innerText = "Voice API Not Supported in Browser";
 }
 
-/* Logo and Branding Styles */
-.logo { 
-    display: flex; 
-    align-items: center; 
-    gap: 12px; 
-    font-size: 1.4rem; 
-    font-weight: 800; 
-    margin-bottom: 50px; 
-    color: #60a5fa; 
-    letter-spacing: -0.5px; /* Tight letter spacing for modern look */
-}
-.logo ion-icon { font-size: 1.8rem; }
-
-/* Navigation Menu Styles */
-.nav-links { list-style: none; padding: 0; margin: 0; }
-.nav-links li { 
-    padding: 14px 18px; 
-    display: flex; 
-    align-items: center; 
-    gap: 15px; 
-    color: #f3f4f6; 
-    background: rgba(59, 130, 246, 0.15); /* Subtle blue highlight */
-    border-radius: 12px; 
-    font-weight: 600;
-    border-left: 4px solid #3b82f6; /* Active state indicator */
-}
-.nav-links li ion-icon { font-size: 1.4rem; color: #60a5fa; }
-
-/* Trust Badge - Security Assurance */
-.trust-badge {
-    background: rgba(255,255,255,0.05); /* Semi-transparent background */
-    padding: 15px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    color: #9ca3af;
-    font-size: 0.85rem;
-    line-height: 1.4;
-}
-.trust-badge ion-icon { font-size: 2rem; color: #10b981; } /* Green checkmark */
-
-/* ============================================
-   MAIN CONTENT AREA STYLES
-   ============================================ */
-.main-content { 
-    flex: 1;                     /* Takes remaining space */
-    padding: 40px 50px; 
-    overflow-y: auto;           /* Scrollable content area */
+function stopRecording() {
+    isRecording = false;
+    recognition.stop();
+    recordBtn.classList.remove('recording');
+    recordText.innerText = "Start Recording Doctor";
+    statusMessage.innerHTML = "✅ Audio captured. Ready to analyze.";
 }
 
-/* Header Section - Title and User Profile */
-header { 
-    display: flex; 
-    justify-content: space-between; 
-    align-items: center; 
-    margin-bottom: 40px; 
-}
-header h1 { margin: 0; font-size: 2rem; font-weight: 700; color: #111827; letter-spacing: -0.5px; }
-header p { color: var(--text-muted); margin: 6px 0 0; font-size: 1rem; }
+recordBtn.addEventListener('click', () => {
+    if (!isRecording) {
+        finalTranscript = ""; 
+        liveTranscript.innerHTML = "Listening...";
+        recognition.start();
+    } else {
+        stopRecording();
+    }
+});
 
-/* User Profile Icon */
-.user-profile ion-icon { font-size: 3rem; color: #cbd5e1; cursor: pointer; transition: 0.2s; }
-.user-profile ion-icon:hover { color: #94a3b8; } /* Hover state */
 
-/* Dashboard Grid Layout - Responsive Card System */
-.dashboard-grid { 
-    display: grid; 
-    grid-template-columns: 1fr 1fr; /* Changed to equal columns to fit 3 items beautifully */
-    gap: 25px; 
+// --- 5. GEMINI 3.1 AI TRANSLATION ENGINE ---
+
+// Auto-load the key if the user saved it in their browser previously
+if (localStorage.getItem('gemini_api_key')) {
+    apiKeyInput.value = localStorage.getItem('gemini_api_key');
 }
 
-/* ============================================
-   CARD COMPONENT STYLES
-   ============================================ */
-.card { 
-    background: var(--card-bg); 
-    padding: 30px; 
-    border-radius: 20px; 
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.03); /* Subtle shadow */
-    border: 1px solid var(--border-light); 
-}
+translateBtn.addEventListener('click', async () => {
+    const file = reportUpload.files[0];
+    const langName = languageSelect.options[languageSelect.selectedIndex].text;
+    const userApiKey = apiKeyInput.value.trim();
+    
+    // Check if user provided an API key
+    if (!userApiKey) {
+        return alert("Security Check: Please paste your Google AI Studio API Key in the settings card first!");
+    } else {
+        // Save it to the browser's local storage for convenience
+        localStorage.setItem('gemini_api_key', userApiKey);
+    }
 
-/* Card Header - Icon and Title */
-.card-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 20px;
-    color: #111827;
-}
-.card-header h3 { margin: 0; font-size: 1.2rem; font-weight: 600; }
-.card-header ion-icon { font-size: 1.5rem; color: var(--primary-blue); }
+    if (!file && finalTranscript.trim() === "") {
+        return alert("Please upload a medical report OR record a voice consultation!");
+    }
 
-/* ============================================
-   FILE UPLOAD DROPZONE STYLES
-   ============================================ */
-.dropzone { 
-    border: 2px dashed #cbd5e1; 
-    border-radius: 16px; 
-    padding: 40px 20px; 
-    text-align: center; 
-    background: #f8fafc; 
-    cursor: pointer; 
-    transition: all 0.3s ease; 
-}
-.dropzone:hover { border-color: var(--primary-blue); background: #eff6ff; } /* Hover state */
-.dropzone.file-set { border-color: #10b981; background-color: #ecfdf5; } /* File selected state */
-.dropzone ion-icon { font-size: 3rem; color: #94a3b8; margin-bottom: 15px; transition: 0.3s; }
-.dropzone:hover ion-icon { color: var(--primary-blue); }
-.dropzone.file-set ion-icon { color: #10b981; }
+    // Set up the secure URL dynamically
+    const MODEL = "gemini-3.1-flash-lite-preview"; 
+    const URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${userApiKey}`;
 
-/* File Display Text Styles */
-#fileNameDisplay { font-weight: 600; margin: 0 0 5px 0; color: #475569; }
-.supported { font-size: 0.85rem; color: #94a3b8; }
+    translateBtn.disabled = true;
+    statusMessage.innerHTML = "🤖 Gemini 3.1 is analyzing your data...";
+    translatedOutput.innerHTML = "Generating translation and summary... please wait.";
 
-/* ============================================
-   VOICE CONSULTATION STYLES
-   ============================================ */
-.settings-card { grid-column: span 2; } /* Make settings span full width */
+    try {
+        let prompt = "";
+        let apiBody = {};
 
-.btn-outline {
-    width: 100%;
-    padding: 14px;
-    background: transparent;
-    border: 2px solid var(--primary-blue);
-    color: var(--primary-blue);
-    border-radius: 12px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
-    transition: 0.2s;
-}
-.btn-outline:hover { background: rgba(37, 99, 235, 0.05); }
+        // SCENARIO 1: Both Image and Voice are provided
+        if (file && finalTranscript.trim() !== "") {
+            const b64 = await fileToB64(file);
+            prompt = `Analyze this medical report image AND the following transcript of the doctor's verbal advice: "${finalTranscript}". 
+            1. Provide a comprehensive summary of BOTH combining the report details and the doctor's advice in ${langName}. 
+            2. Provide a 1-sentence simple summary in ${langName} for the patient. 
+            Return ONLY a JSON object: {"full": "...", "short": "..."}. Do not use markdown tags.`;
+            
+            apiBody = { contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: file.type, data: b64 } }] }] };
+        } 
+        // SCENARIO 2: Only Image is provided
+        else if (file) {
+            const b64 = await fileToB64(file);
+            prompt = `Analyze this medical report. 
+            1. Provide a COMPLETE translation into ${langName}. 
+            2. Provide a separate 1-sentence simple summary in ${langName} for the patient. 
+            Return ONLY a JSON object: {"full": "...", "short": "..."}. Do not use markdown tags.`;
+            
+            apiBody = { contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: file.type, data: b64 } }] }] };
+        } 
+        // SCENARIO 3: Only Voice is provided
+        else {
+            prompt = `Analyze the following transcript of a doctor's consultation: "${finalTranscript}".
+            1. Translate and summarize the doctor's advice in ${langName}.
+            2. Provide a separate 1-sentence simple summary in ${langName} for the patient to listen to.
+            Return ONLY a JSON object: {"full": "...", "short": "..."}. Do not use markdown tags.`;
+            
+            apiBody = { contents: [{ parts: [{ text: prompt }] }] };
+        }
 
-/* Pulsing animation for active recording */
-.btn-outline.recording {
-    border-color: #ef4444; /* Red border */
-    color: #ef4444; /* Red text */
-    animation: pulse 1.5s infinite;
-}
-@keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-    70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
-}
+        const response = await fetch(URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(apiBody)
+        });
 
-.transcript-box {
-    margin-top: 15px;
-    padding: 15px;
-    background: #f8fafc;
-    border: 1px solid var(--border-light);
-    border-radius: 10px;
-    font-size: 0.95rem;
-    color: #475569;
-    min-height: 80px;
-    max-height: 150px;
-    overflow-y: auto;
-    line-height: 1.5;
-}
-.placeholder-text-small { color: #94a3b8; text-align: center; margin: 0; font-size: 0.9rem; }
+        const data = await response.json();
 
+        if (data.candidates && data.candidates[0]) {
+            const rawText = data.candidates[0].content.parts[0].text.replace(/```json|```/g, "").trim();
+            const result = JSON.parse(rawText);
 
-/* ============================================
-   FORM INPUT STYLES
-   ============================================ */
-.input-group { margin-bottom: 25px; }
-.input-group label { display: block; font-weight: 600; font-size: 0.95rem; margin-bottom: 10px; color: #374151; }
+            translatedOutput.innerHTML = `<strong>Consultation Details:</strong><br><br>${result.full.replace(/\n/g, '<br>')}`;
+            audioScript = result.short; 
+            
+            statusMessage.innerHTML = "✅ Success! Click 'Speak Summary' to listen.";
+            speakBtn.disabled = false;
+        } else {
+            throw new Error(data.error ? data.error.message : "AI could not process this request.");
+        }
 
-/* Custom Select Dropdown Styles */
-.select-wrapper { position: relative; }
-select { 
-    width: 100%; 
-    padding: 14px 16px; 
-    border: 2px solid var(--border-light); 
-    border-radius: 12px; 
-    font-size: 1rem; 
-    color: var(--text-main);
-    background: #fff;
-    appearance: none;               /* Hide default dropdown arrow */
-    cursor: pointer;
-    font-family: inherit;
-    transition: 0.2s;
-}
-select:focus { outline: none; border-color: var(--primary-blue); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
-.select-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 1.2rem; color: #6b7280; pointer-events: none; }
+    } catch (err) {
+        console.error(err);
+        statusMessage.innerHTML = "❌ Analysis failed.";
+        translatedOutput.innerHTML = "Error: " + err.message;
+    } finally {
+        translateBtn.disabled = false;
+    }
+});
 
-/* AI Engine Information Badge */
-.engine-info {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 12px;
-    background: #f1f5f9;
-    border-radius: 10px;
-    color: #475569;
-    font-size: 0.9rem;
-    margin-bottom: 25px;
-}
-.engine-info ion-icon { color: #8b5cf6; font-size: 1.2rem; } /* Purple chip icon */
-
-/* ============================================
-   BUTTON COMPONENT STYLES
-   ============================================ */
-button { 
-    width: 100%;
-    padding: 16px; 
-    border: none; 
-    border-radius: 12px; 
-    color: white; 
-    font-weight: 600; 
-    font-size: 1.05rem;
-    cursor: pointer; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    gap: 10px; 
-    transition: all 0.2s ease; 
-}
-/* Primary Action Button */
-.btn-primary { background: var(--primary-blue); box-shadow: 0 4px 15px rgba(37, 99, 235, 0.25); }
-.btn-primary:hover { background: var(--primary-hover); transform: translateY(-2px); } /* Lift effect */
-
-/* Secondary Action Button */
-.btn-secondary { background: var(--accent-teal); width: auto; padding: 10px 20px; font-size: 0.95rem; border-radius: 8px; }
-.btn-secondary:hover:not(:disabled) { background: var(--accent-teal-hover); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(13, 148, 136, 0.2); }
-
-/* Disabled Button State */
-button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
-
-/* ============================================
-   RESULTS CARD STYLES
-   ============================================ */
-.result-card { grid-column: span 2; border-top: 6px solid var(--primary-blue); } /* Spans 2 columns, blue top border */
-.result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
-.header-left { display: flex; align-items: center; gap: 10px; }
-.header-left h3 { margin: 0; font-size: 1.2rem; font-weight: 600; }
-.header-left ion-icon { font-size: 1.5rem; color: var(--primary-blue); }
-
-/* Translation Output Display Area */
-.result-display { 
-    background: #f8fafc; 
-    border: 1px solid var(--border-light); 
-    padding: 25px; 
-    border-radius: 14px; 
-    min-height: 120px; 
-    white-space: pre-wrap;     /* Preserve line breaks */
-    font-size: 1.05rem; 
-    line-height: 1.8; 
-    color: #374151; 
-}
-
-/* Placeholder Text for Empty State */
-.placeholder-text {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: #94a3b8;
-    text-align: center;
-    height: 100%;
-}
-.placeholder-text ion-icon { font-size: 3rem; margin-bottom: 10px; opacity: 0.5; }
-.placeholder-text p { margin: 0; }
-
-/* ============================================
-   STATUS MESSAGE STYLES
-   ============================================ */
-.status-box { 
-    margin-top: 25px; 
-    text-align: center; 
-    color: #64748b; 
-    font-weight: 500; 
-    font-size: 0.95rem;
-    padding: 12px;
-    background: #e2e8f0;
-    border-radius: 10px;
-    display: inline-block;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-/* ============================================
-   SECURE API KEY INPUT STYLES
-   ============================================ */
-.api-input {
-    width: 100%;
-    padding: 14px 16px;
-    border: 2px solid var(--border-light);
-    border-radius: 12px;
-    font-size: 1rem;
-    margin-bottom: 5px;
-    box-sizing: border-box;
-    font-family: inherit;
-    transition: 0.2s;
-}
-.api-input:focus {
-    outline: none;
-    border-color: var(--accent-teal);
-    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
-}
-.input-group label ion-icon {
-    vertical-align: middle;
-    margin-right: 5px;
-    color: #64748b;
-}
+// --- 6. TEXT-TO-SPEECH FUNCTIONALITY (Google Translate TTS) ---
+speakBtn.addEventListener('click', () => {
+    if (!audioScript) return alert("No translation available to read!");
+    if (currentAudio) {
+        currentAudio.pause();
+        currentAudio.currentTime = 0;
+    }
+    const baseLangCode = languageSelect.value.split('-')[0];
+    const cloudTtsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(audioScript)}&tl=${baseLangCode}&client=tw-ob`;
+    
+    currentAudio = new Audio(cloudTtsUrl);
+    currentAudio.onplay = () => statusMessage.innerHTML = `🔊 Streaming Audio in ${languageSelect.options[languageSelect.selectedIndex].text}...`;
+    currentAudio.onended = () => statusMessage.innerHTML = "✅ Audio finished.";
+    currentAudio.onerror = () => statusMessage.innerHTML = "❌ Network error. Could not load cloud audio.";
+    
+    currentAudio.play().catch(err => {
+        console.error("Playback blocked:", err);
+        statusMessage.innerHTML = "❌ Browser blocked playback. Click Speak again.";
+    });
+   });
+});
